@@ -1,19 +1,20 @@
 #include <Arduino.h>
 
+//ESP8266 libs
 #include <ESP8266WiFi.h>
 #include <WiFiUdp.h>
 #include <ArtnetWifi.h>
 
+//FastLED settings
 #define  FASTLED_ESP8266_RAW_PIN_ORDER
 #include "FastLED.h"
-
-
-#define NUM_LEDS 1
+#define NUM_LEDS 24
 #define DATA_PIN 0
 #define CLOCK_PIN 2
 #define CHIPSET WS2801
 #define COLOR_ORDER RGB
-#define BRIGHTNESS 96
+#define BRIGHTNESS 255
+CRGB leds[NUM_LEDS];
 
 //Wifi settings
 const char* ssid = "aether2G";
@@ -29,8 +30,6 @@ const int maxUniverses = numberOfChannels / 512 + ((numberOfChannels % 512) ? 1 
 bool universesReceived[maxUniverses];
 bool sendFrame = 1;
 int previousDataLength = 0;
-
-CRGB leds[NUM_LEDS];
 
 // connect to wifi – returns true if successful or false if not
 boolean ConnectWifi(void)
@@ -63,12 +62,10 @@ boolean ConnectWifi(void)
     Serial.println("");
     Serial.println("Connection failed.");
   }
-
-
-
   return state;
 }
 
+//Artnet callback function
 void onDmxFrame(uint16_t universe, uint16_t length, uint8_t sequence, uint8_t* data)
 {
   sendFrame = 1;
@@ -98,16 +95,6 @@ void onDmxFrame(uint16_t universe, uint16_t length, uint8_t sequence, uint8_t* d
     int led = i + (universe - startUniverse) * (previousDataLength / 3);
     if (led < NUM_LEDS)
       leds[led] = CRGB(data[i * 3], data[i * 3 + 1], data[i * 3 + 2]);
-      /*
-      Serial.println("artnet data [");
-      Serial.print(led);
-      Serial.print("] : ");
-      Serial.print(data[i]);
-      Serial.print(" ");
-      Serial.print(data[i+1]);
-      Serial.print(" ");
-      Serial.print(data[i+2]);
-      */
   }
   previousDataLength = length;
 
@@ -119,38 +106,43 @@ void onDmxFrame(uint16_t universe, uint16_t length, uint8_t sequence, uint8_t* d
   }
 }
 
+
 void RGBtest(){
-  leds[0] = CRGB::Red;
-  FastLED.show();
-  delay(500);
-  leds[0] = CRGB::Black;
-  FastLED.show();
-  delay(500);
-  leds[0] = CRGB::Green;
-  FastLED.show();
-  delay(500);
-  leds[0] = CRGB::Black;
-  FastLED.show();
-  delay(500);
-  leds[0] = CRGB::Blue;
-  FastLED.show();
-  delay(500);
-  leds[0] = CRGB::Black;
-  FastLED.show();
+  for (int i = 0; i < NUM_LEDS; ++i){
+    leds[i] = CRGB::Red;
+    FastLED.show();
+    delay(100);
+    leds[i] = CRGB::Black;
+    FastLED.show();
+    delay(100);
+    leds[i] = CRGB::Green;
+    FastLED.show();
+    delay(100);
+    leds[i] = CRGB::Black;
+    FastLED.show();
+    delay(100);
+    leds[i] = CRGB::Blue;
+    FastLED.show();
+    delay(100);
+    leds[i] = CRGB::Black;
+    FastLED.show();
+  }
 }
 
 void setup() {
-
+  //LED object
   FastLED.addLeds<CHIPSET, DATA_PIN, CLOCK_PIN, COLOR_ORDER>(leds, NUM_LEDS);
+  //set total brightness
   FastLED.setBrightness(BRIGHTNESS);
-
+  //start Serial for monitor
   Serial.begin(9600);
+  //connect to Wifi
   ConnectWifi();
-
+  //init artnet object
   artnet.begin();
   // this will be called for each packet received
   artnet.setArtDmxCallback(onDmxFrame);
-
+  //LED test
   RGBtest();
 }
 
